@@ -1,0 +1,48 @@
+import { Navigate, Route, Routes } from 'react-router-dom';
+import AdminLayout from './components/AdminLayout.jsx';
+import RoleRoute from './components/RoleRoute.jsx';
+import SiteLayout from './components/SiteLayout.jsx';
+import AccountPages from './pages/AccountPages.jsx';
+import AdminMessagesPage from './pages/AdminMessagesPage.jsx';
+import AdminPage from './pages/AdminPage.jsx';
+import AdminUsersPage from './pages/AdminUsersPage.jsx';
+import DescuentosPage from './pages/DescuentosPage.jsx';
+import InfoPages from './pages/InfoPages.jsx';
+import ReportesPage from './pages/ReportesPage.jsx';
+import ShopPages from './pages/ShopPages.jsx';
+import SellerPage from './pages/SellerPage.jsx';
+import TicketsPage from './pages/TicketsPage.jsx';
+
+export default function App() {
+  return (
+    <Routes>
+      <Route element={<SiteLayout />}>
+        <Route path="/" element={<AccountPages.LoginPage />} />
+        <Route path="/registro" element={<AccountPages.RegisterPage />} />
+        <Route path="/olvide-contrasena" element={<AccountPages.ForgotPasswordPage />} />
+        <Route path="/restablecer" element={<AccountPages.ResetPasswordPage />} />
+        <Route path="/perfil" element={<RoleRoute allowedRoles={['customer', 'seller', 'admin']}><AccountPages.ProfilePage /></RoleRoute>} />
+        <Route path="/menu" element={<ShopPages.MenuPage />} />
+        <Route path="/viajes/:slug" element={<ShopPages.TripDetailPage />} />
+        <Route path="/blog" element={<InfoPages.BlogPage />} />
+        <Route path="/nosotros" element={<InfoPages.AboutPage />} />
+        <Route path="/servicio" element={<AccountPages.ServicePage />} />
+        <Route path="/descuentos" element={<DescuentosPage />} />
+        <Route path="/boletos/:saleCode" element={<TicketsPage />} />
+      </Route>
+      <Route element={<RoleRoute allowedRoles={['admin']} />}>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminPage />} />
+          <Route path="usuarios" element={<AdminUsersPage />} />
+          <Route path="mensajes" element={<AdminMessagesPage />} />
+          <Route path="reportes" element={<ReportesPage />} />
+          <Route path="perfil" element={<AccountPages.ProfilePage />} />
+        </Route>
+      </Route>
+      <Route element={<RoleRoute allowedRoles={['seller']} />}>
+        <Route path="/vendedor" element={<SellerPage />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
