@@ -58,6 +58,10 @@ export default function CheckoutForm({ items, onCancel, onComplete }) {
         <button type="button" className="icon-button" onClick={onCancel} aria-label="Volver al carrito"><i className="bi bi-arrow-left" /></button>
       </div>
       <p className="muted">No se realizará un cobro. Al confirmar, se reservarán los asientos y se emitirán los boletos.</p>
+      <fieldset className="baggage-fields">
+        <legend>Equipaje permitido</legend>
+        <p className="muted">Por pasajero se incluye 1 maleta facturada de hasta 15 kg y 1 bolso de mano de hasta 5 kg. El equipaje adicional no está incluido en esta compra simulada.</p>
+      </fieldset>
       {passengerFields.map(({ item }, index) => (
         <fieldset className="passenger-fields" key={`${item.cartKey}-${index}`}>
           <legend>Pasajero {index + 1} · {item.title}</legend>

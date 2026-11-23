@@ -5,7 +5,12 @@ import { MemoryRouter } from 'react-router-dom';
 import { ForgotPasswordPage, ResetPasswordPage, ProfilePage } from './AccountPages.jsx';
 import { apiRequest } from '../lib/api.js';
 
-vi.mock('../lib/api.js', () => ({ apiRequest: vi.fn(), clearAuth: vi.fn() }));
+vi.mock('../lib/api.js', () => ({
+  apiRequest: vi.fn(),
+  clearAuth: vi.fn(),
+  getStoredUser: () => null,
+  updateStoredUser: vi.fn()
+}));
 
 afterEach(() => {
   cleanup();

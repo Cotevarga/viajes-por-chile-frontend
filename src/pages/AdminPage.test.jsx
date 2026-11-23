@@ -10,12 +10,12 @@ vi.mock('../context/ProductContext.jsx', () => ({ useProducts: vi.fn() }));
 vi.mock('../lib/api.js', () => ({ apiRequest: vi.fn() }));
 
 const firstProducts = [
-  { id: 'PROD-01', slug: 'alfa', title: 'Santiago - Alfa', destination: 'Alfa', price: 10000, type: 'Clásico', status: 'Activo', image: 'alfa.jpg' },
-  { id: 'PROD-02', slug: 'beta', title: 'Santiago - Beta', destination: 'Beta', price: 15000, type: 'Premium', status: 'Agotado', image: 'beta.jpg' }
+  { id: 'PROD-01', slug: 'alfa', title: 'Santiago - Alfa', destination: 'Alfa', distance_km: 100, price: 10000, type: 'Clásico', status: 'Activo', image: 'alfa.jpg' },
+  { id: 'PROD-02', slug: 'beta', title: 'Santiago - Beta', destination: 'Beta', distance_km: 150, price: 15000, type: 'Premium', status: 'Agotado', image: 'beta.jpg' }
 ];
 
 const updatedProducts = [
-  { id: 'PROD-03', slug: 'gamma', title: 'Santiago - Gamma', destination: 'Gamma', price: 20000, type: 'Semi Cama', status: 'Activo', image: 'gamma.jpg' }
+  { id: 'PROD-03', slug: 'gamma', title: 'Santiago - Gamma', destination: 'Gamma', distance_km: 200, price: 20000, type: 'Semi Cama', status: 'Activo', image: 'gamma.jpg' }
 ];
 
 function renderAdminPage() {
@@ -90,6 +90,7 @@ describe('AdminPage', () => {
       await user.click(screen.getByRole('button', { name: 'Guardar ruta' }));
 
       await waitFor(() => expect(saveProduct).toHaveBeenCalledWith(expect.objectContaining({
+        distance_km: 100,
         discount_percent: 20,
         schedules: [expect.objectContaining({
           date: '2099-04-20',

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { apiRequest, clearAuth } from './api.js';
+import { apiRequest, clearAuth, restoreSession } from './api.js';
 
 describe('apiRequest', () => {
   afterEach(() => {
@@ -49,7 +49,7 @@ describe('apiRequest', () => {
     await expect(apiRequest('products')).rejects.toThrow('No se pudo conectar con Spring Boot.');
   });
 
-  it('mantiene el JWT solo en memoria y persiste el usuario para la interfaz', async () => {
+  it('persiste el JWT y el usuario para restaurar la sesión tras recargar', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
@@ -61,7 +61,7 @@ describe('apiRequest', () => {
     await apiRequest('auth/login', { method: 'POST', body: JSON.stringify({ email: 'admin@example.com' }) });
     await apiRequest('auth/me');
 
-    expect(localStorage.getItem('viajes.jwt')).toBeNull();
+    expect(localStorage.getItem('viajes.jwt')).toBe('jwt-de-prueba');
     expect(JSON.parse(localStorage.getItem('viajes.user'))).toEqual({ role: 'admin' });
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/auth/me', {
       method: 'GET',
@@ -91,7 +91,7 @@ describe('apiRequest', () => {
       headers: { Accept: 'application/json', Authorization: 'Bearer jwt-renovado' },
       credentials: 'include'
     });
-    expect(localStorage.getItem('viajes.jwt')).toBeNull();
+    expect(localStorage.getItem('viajes.jwt')).toBe('jwt-renovado');
   });
 
   it('elimina la sesión local si el refresh token expiró o fue revocado', async () => {
@@ -123,6 +123,25 @@ describe('apiRequest', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/v1/products', {
       method: 'GET',
       headers: { Accept: 'application/json', Authorization: 'Bearer jwt-activo' },
+      credentials: 'include'
+    });
+  });
+
+  it('restaura el JWT desde la cookie de refresh cuando falta el token de acceso', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ token: 'jwt-restaurado', user: { role: 'customer' } })
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    localStorage.setItem('viajes.user', JSON.stringify({ role: 'customer' }));
+
+    await expect(restoreSession()).resolves.toEqual({ role: 'customer' });
+    expect(localStorage.getItem('viajes.jwt')).toBe('jwt-restaurado');
+    expect(JSON.parse(localStorage.getItem('viajes.user'))).toEqual({ role: 'customer' });
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/auth/refresh', {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
       credentials: 'include'
     });
   });

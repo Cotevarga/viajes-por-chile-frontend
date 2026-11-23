@@ -68,6 +68,56 @@ describe('MenuPage', () => {
     expect(screen.getByRole('heading', { name: 'Beta' })).toBeInTheDocument();
   });
 
+  it('permite buscar ida y vuelta con origen, destino, fechas y pasajeros', async () => {
+    const products = [
+      {
+        slug: 'valparaiso',
+        title: 'Santiago - Valparaíso',
+        destination: 'Valparaíso',
+        price: 10000,
+        type: 'Clásico',
+        status: 'Activo',
+        image: 'valpo.jpg',
+        schedules: [{ id: 'ida', date: '2026-12-01', time: '09:00', platform: '1', capacity: 40 }]
+      },
+      {
+        slug: 'santiago-valparaiso',
+        title: 'Valparaíso - Santiago',
+        destination: 'Santiago',
+        price: 10000,
+        type: 'Clásico',
+        status: 'Activo',
+        image: 'santiago.jpg',
+        schedules: [{ id: 'vuelta', date: '2026-12-05', time: '17:00', platform: '2', capacity: 40 }]
+      }
+    ];
+    useProducts.mockReturnValue({ products });
+    const user = userEvent.setup();
+    render(renderMenuPage());
+
+    await user.click(screen.getByRole('radio', { name: 'Ida y vuelta' }));
+    await user.selectOptions(screen.getByLabelText('Origen'), 'santiago');
+    await user.selectOptions(screen.getByLabelText('Destino'), 'valparaiso');
+    await user.type(screen.getByLabelText('Salida'), '2026-12-01');
+    await user.type(screen.getByLabelText('Regreso'), '2026-12-05');
+    await user.selectOptions(screen.getByLabelText('Pasajeros'), '2');
+    await user.click(screen.getByRole('button', { name: /Buscar/ }));
+
+    expect(await screen.findByText(/Regreso 2026-12-05/)).toBeInTheDocument();
+    expect(screen.getByText(/2 pasajero/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Elegir salida' })).toHaveAttribute('href', '/viajes/valparaiso');
+  });
+
+  it('muestra la distancia y clasifica como doble piso toda ruta de al menos 400 km', () => {
+    useProducts.mockReturnValue({ products: [
+      { slug: 'laserena', title: 'Santiago - La Serena', destination: 'La Serena', distance_km: 400, price: 18000, type: 'Premium', image: 'serena.jpg' }
+    ] });
+
+    render(renderMenuPage());
+
+    expect(screen.getByText(/Bus doble piso/)).toBeInTheDocument();
+  });
+
   it('separa las rutas por zona y ofrece enlaces a cada listado', () => {
     useProducts.mockReturnValue({ products: [
       { slug: 'arica', title: 'Santiago - Arica', destination: 'Arica', price: 35000, type: 'Premium', image: 'arica.jpg' },

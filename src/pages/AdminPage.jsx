@@ -5,11 +5,12 @@ import { useProducts } from '../context/ProductContext.jsx';
 import { apiRequest } from '../lib/api.js';
 
 const blankProduct = {
-  id: '', slug: '', title: '', destination: '', price: '', type: 'Clásico', status: 'Activo',
+  id: '', slug: '', title: '', destination: '', distance_km: '', price: '', type: 'Clásico', status: 'Activo',
   image: 'Buses.png', description: '', gallery: [], discount_percent: 0, schedules: []
 };
 
 const blankSchedule = { date: '', time: '', platform: '', capacity: 40 };
+const capacityLimitFor = (distance, type) => Number(distance) >= 400 || type === 'Salón Cama' ? 64 : type === 'Semi Cama' ? 44 : 100;
 
 export default function AdminPage() {
   const { products, saveProduct, deleteProduct, error: databaseError } = useProducts();
@@ -51,22 +52,48 @@ export default function AdminPage() {
       ...blankProduct,
       ...product,
       price: String(product.price),
+      distance_km: String(product.distance_km || ''),
       discount_percent: Number(product.discount_percent || 0),
-      schedules: Array.isArray(product.schedules) ? product.schedules : []
+      schedules: Array.isArray(product.schedules)
+        ? product.schedules.map((schedule) => ({
+          ...schedule,
+          capacity: Number(product.distance_km) >= 400 ? 64 : Number(schedule.capacity)
+        }))
+        : []
     });
-    setScheduleDraft(blankSchedule);
+    setScheduleDraft({ ...blankSchedule, capacity: Number(product.distance_km) >= 400 ? 64 : 40 });
     setFormError('');
   }
 
   function addSchedule() {
-    if (!scheduleDraft.date || !scheduleDraft.time || !scheduleDraft.platform || Number(scheduleDraft.capacity) < 1) {
-      setFormError('Completa fecha, hora, andén y cupos para agregar la salida.');
+    const capacityLimit = capacityLimitFor(form.distance_km, form.type);
+    if (!scheduleDraft.date || !scheduleDraft.time || !scheduleDraft.platform || Number(scheduleDraft.capacity) < 1
+      || Number(scheduleDraft.capacity) > capacityLimit) {
+      setFormError(`Completa fecha, hora y andén; los cupos deben estar entre 1 y ${capacityLimit}.`);
       return;
     }
     const id = `${scheduleDraft.date}-${scheduleDraft.time}-${Math.random().toString(36).slice(2, 8)}`;
     setForm((current) => ({ ...current, schedules: [...current.schedules, { ...scheduleDraft, id, capacity: Number(scheduleDraft.capacity) }] }));
-    setScheduleDraft(blankSchedule);
+    setScheduleDraft({ ...blankSchedule, capacity: Number(form.distance_km) >= 400 ? 64 : 40 });
     setFormError('');
+  }
+
+  function updateDistance(value) {
+    const limit = capacityLimitFor(value, form.type);
+    setForm((current) => ({
+      ...current,
+      distance_km: value,
+      schedules: current.schedules.map((schedule) => ({
+        ...schedule,
+        capacity: Number(value) >= 400 ? 64 : Math.min(Number(schedule.capacity), limit)
+      }))
+    }));
+    setScheduleDraft((current) => ({
+      ...current,
+      capacity: Number(value) >= 400 && Number(form.distance_km) < 400
+        ? 64
+        : Math.min(Number(current.capacity) || limit, limit)
+    }));
   }
 
   function removeSchedule(id) {
@@ -79,6 +106,7 @@ export default function AdminPage() {
       ...form,
       slug: form.slug.trim().toLowerCase().replace(/\s+/g, '-'),
       price: Number(form.price),
+      distance_km: Number(form.distance_km),
       discount_percent: Number(form.discount_percent),
       gallery: form.gallery?.length ? form.gallery : [form.image]
     };
@@ -133,10 +161,11 @@ export default function AdminPage() {
             <label>Título<input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required /></label>
             <label>Destino<input value={form.destination} onChange={(event) => setForm({ ...form, destination: event.target.value })} required /></label>
           </div>
+          <label>Distancia estimada (km)<input type="number" min="1" value={form.distance_km} onChange={(event) => updateDistance(event.target.value)} required /><small>Desde 400 km, el sistema exige bus de dos pisos: 12 Salón Cama abajo y 52 Semi Cama arriba.</small></label>
           <div className="form-three">
             <label>Precio normal<input type="number" min="1" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} required /></label>
             <label>Descuento (%)<input aria-label="Descuento (%)" type="number" min="0" max="90" value={form.discount_percent} onChange={(event) => setForm({ ...form, discount_percent: event.target.value })} /></label>
-            <label>Servicio<select value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}><option>Clásico</option><option>Semi Cama</option><option>Salón Cama</option><option>Premium</option></select></label>
+            <label>Servicio<select value={form.type} onChange={(event) => { const limit = capacityLimitFor(form.distance_km, event.target.value); setForm({ ...form, type: event.target.value, schedules: form.schedules.map((schedule) => ({ ...schedule, capacity: Math.min(Number(schedule.capacity), limit) })) }); setScheduleDraft((current) => ({ ...current, capacity: Math.min(Number(current.capacity) || limit, limit) })); }}><option>Clásico</option><option>Semi Cama</option><option>Salón Cama</option><option>Premium</option></select></label>
           </div>
           <div className="form-two">
             <label>Estado<select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}><option>Activo</option><option>Agotado</option></select></label>
@@ -158,7 +187,7 @@ export default function AdminPage() {
               <label>Andén<input value={scheduleDraft.platform} onChange={(event) => setScheduleDraft({ ...scheduleDraft, platform: event.target.value })} /></label>
             </div>
             <div className="form-two">
-              <label>Cupos / asientos<input type="number" min="1" max="100" value={scheduleDraft.capacity} onChange={(event) => setScheduleDraft({ ...scheduleDraft, capacity: event.target.value })} /></label>
+              <label>Cupos / asientos<input type="number" min="1" max={capacityLimitFor(form.distance_km, form.type)} value={scheduleDraft.capacity} onChange={(event) => setScheduleDraft({ ...scheduleDraft, capacity: event.target.value })} /></label>
               <button type="button" className="button button-light add-schedule" onClick={addSchedule}>Agregar salida</button>
             </div>
           </fieldset>

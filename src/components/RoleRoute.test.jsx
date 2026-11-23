@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
-import RoleRoute from './RoleRoute.jsx';
+import RoleRoute, { GuestRoute } from './RoleRoute.jsx';
 
 describe('RoleRoute', () => {
   afterEach(() => localStorage.clear());
@@ -37,5 +37,20 @@ describe('RoleRoute', () => {
     );
 
     expect(screen.getByText('Tienda')).toBeInTheDocument();
+  });
+
+  it('redirige a la pantalla principal del rol al visitar login con una sesión guardada', () => {
+    localStorage.setItem('viajes.user', JSON.stringify({ role: 'seller' }));
+
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <Routes>
+          <Route path="/login" element={<GuestRoute><p>Iniciar sesión</p></GuestRoute>} />
+          <Route path="/vendedor" element={<p>Panel vendedor</p>} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Panel vendedor')).toBeInTheDocument();
   });
 });

@@ -5,7 +5,12 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { LoginPage, RegisterPage, ServicePage } from './AccountPages.jsx';
 import { apiRequest } from '../lib/api.js';
 
-vi.mock('../lib/api.js', () => ({ apiRequest: vi.fn(), clearAuth: vi.fn() }));
+vi.mock('../lib/api.js', () => ({
+  apiRequest: vi.fn(),
+  clearAuth: vi.fn(),
+  getStoredUser: () => null,
+  updateStoredUser: vi.fn()
+}));
 
 afterEach(() => {
   cleanup();
@@ -73,23 +78,18 @@ describe('LoginPage', () => {
 });
 
 describe('LoginPage con Google', () => {
-  it('muestra el botón de Google cuando no hay un ID configurado localmente', () => {
+  it('avisa que Google no está configurado y mantiene disponible el login tradicional', () => {
     vi.stubEnv('VITE_GOOGLE_CLIENT_ID', '');
     const initialize = vi.fn();
     const renderButton = vi.fn();
     window.google = { accounts: { id: { initialize, renderButton } } };
-    const appendSpy = vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
-      if (node.tagName === 'SCRIPT') { node.onload?.(); return node; }
-      return node;
-    });
 
     renderRoutes(<LoginPage />);
-    appendSpy.mockRestore();
 
-    expect(initialize).toHaveBeenCalledWith(expect.objectContaining({
-      client_id: '25065180497-5qa2tf845vbhk57gjav0iht24jkre8ft.apps.googleusercontent.com'
-    }));
-    expect(renderButton).toHaveBeenCalled();
+    expect(screen.getByText('El inicio con Google no está configurado. Puedes ingresar con correo y contraseña.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Correo electrónico')).toBeInTheDocument();
+    expect(initialize).not.toHaveBeenCalled();
+    expect(renderButton).not.toHaveBeenCalled();
   });
 
   it('envía la credencial de Google a la API y navega al menú', async () => {

@@ -1,11 +1,17 @@
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/+$/, '');
 const USER_KEY = 'viajes.user';
-const LEGACY_TOKEN_KEY = 'viajes.jwt';
-let accessToken = null;
+const TOKEN_KEY = 'viajes.jwt';
+let accessToken = globalThis.localStorage?.getItem(TOKEN_KEY) || null;
 let refreshPromise = null;
-globalThis.localStorage?.removeItem(LEGACY_TOKEN_KEY);
+let restorePromise = null;
+const authListeners = new Set();
 
 const PUBLIC_AUTH = ['auth/login', 'auth/register', 'auth/google', 'auth/refresh', 'auth/forgot-password', 'auth/reset-password'];
+
+function notifyAuthListeners() {
+  const user = getStoredUser();
+  authListeners.forEach((listener) => listener(user));
+}
 
 function isAuthenticationRequest(path) {
   const endpoint = path.split('?')[0].replace(/^\/+/, '');
@@ -18,8 +24,12 @@ function shouldRefresh(path) {
 }
 
 function saveAuth(result) {
-  if (result.token) accessToken = result.token;
+  if (result.token) {
+    accessToken = result.token;
+    globalThis.localStorage?.setItem(TOKEN_KEY, result.token);
+  }
   if (result.user) globalThis.localStorage?.setItem(USER_KEY, JSON.stringify(result.user));
+  if (result.user) notifyAuthListeners();
 }
 
 async function readJson(response) {
@@ -60,11 +70,48 @@ async function refreshAccessToken() {
         throw new Error(result.error || 'No se pudo renovar la sesión. Inicia sesión nuevamente.');
       }
       saveAuth(result);
+      return result.user;
     })().finally(() => {
       refreshPromise = null;
     });
   }
   return refreshPromise;
+}
+
+export async function restoreSession() {
+  const user = getStoredUser();
+  if (accessToken && user) return user;
+  if (!accessToken && !user) return null;
+
+  if (!restorePromise) {
+    restorePromise = (async () => {
+      const response = await sendRequest('auth/refresh', { method: 'POST' });
+      const result = await readJson(response);
+      if (response.status === 401) {
+        clearAuth();
+        return null;
+      }
+      if (!response.ok || !result.token || !result.user) {
+        throw new Error(result.error || 'No se pudo restaurar la sesión.');
+      }
+      saveAuth(result);
+      return result.user;
+    })().finally(() => {
+      restorePromise = null;
+    });
+  }
+  return restorePromise;
+}
+
+export function subscribeAuth(listener) {
+  authListeners.add(listener);
+  return () => authListeners.delete(listener);
+}
+
+export function updateStoredUser(user) {
+  if (user) globalThis.localStorage?.setItem(USER_KEY, JSON.stringify(user));
+  else globalThis.localStorage?.removeItem(USER_KEY);
+  notifyAuthListeners();
 }
 
 export async function apiRequest(path, options = {}) {
@@ -101,6 +148,7 @@ export function getStoredUser() {
 
 export function clearAuth() {
   accessToken = null;
-  globalThis.localStorage?.removeItem(LEGACY_TOKEN_KEY);
+  globalThis.localStorage?.removeItem(TOKEN_KEY);
   globalThis.localStorage?.removeItem(USER_KEY);
+  notifyAuthListeners();
 }

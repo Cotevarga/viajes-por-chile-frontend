@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { formatPrice, imageUrl } from '../data/catalog.js';
 import { useCart } from '../context/CartContext.jsx';
 import { useProducts } from '../context/ProductContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 import CheckoutForm from './CheckoutForm.jsx';
+import LogoutButton from './LogoutButton.jsx';
 
 const links = [
   ['/menu', 'Rutas'], ['/descuentos', 'Descuentos'], ['/blog', 'Blog'], ['/nosotros', 'Nosotros'], ['/servicio', 'Ayuda']
@@ -16,6 +18,11 @@ export default function SiteLayout() {
   const { items, count, total, removeItem, clearCart } = useCart();
   const { error: databaseError } = useProducts();
   const navigate = useNavigate();
+  const { user, restoreError } = useAuth();
+
+  if (['seller', 'vendedor'].includes(user?.role?.toLowerCase())) {
+    return <Navigate to="/vendedor" replace />;
+  }
 
   return (
     <div className="site-shell">
@@ -30,8 +37,11 @@ export default function SiteLayout() {
           </button>
           <nav className={`site-nav ${menuOpen ? 'is-open' : ''}`} aria-label="Navegación principal">
             {links.map(([to, label]) => <NavLink key={to} to={to} onClick={() => setMenuOpen(false)}>{label}</NavLink>)}
-            <NavLink className="nav-account" to="/">Mi cuenta</NavLink>
-            <NavLink to="/perfil" onClick={() => setMenuOpen(false)}>Mis datos</NavLink>
+            {user ? <NavLink className="nav-account" to={user.role === 'admin' ? '/admin' : '/perfil'} onClick={() => setMenuOpen(false)}>{user.role === 'admin' ? 'Panel admin' : 'Mi cuenta'}</NavLink>
+              : <NavLink className="nav-account" to="/login" onClick={() => setMenuOpen(false)}>Iniciar sesión</NavLink>}
+            {!user && <NavLink to="/register" onClick={() => setMenuOpen(false)}>Crear cuenta</NavLink>}
+            {user && user.role !== 'admin' && <NavLink to="/perfil" onClick={() => setMenuOpen(false)}>Mis datos</NavLink>}
+            {user && <LogoutButton className="nav-logout" />}
             <button className="cart-button" onClick={() => setCartOpen(true)} aria-label={`Abrir carrito, ${count} pasajes`}>
               <i className="bi bi-bag" /> <span>Carrito</span><b>{count}</b>
             </button>
@@ -40,6 +50,7 @@ export default function SiteLayout() {
       </header>
 
       <main className="site-main">
+        {restoreError && <div className="container database-alert" role="alert">No se pudo restaurar la sesión: {restoreError}</div>}
         {databaseError && <div className="container database-alert" role="status"><i className="bi bi-database-exclamation" /> Base de datos desconectada: {databaseError}</div>}
         <Outlet />
       </main>

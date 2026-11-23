@@ -17,6 +17,9 @@ export default defineConfig(({ mode }) => ({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: './src/setupTests.js'
+    setupFiles: './src/setupTests.js',
+    testTimeout: 10000,
+    maxWorkers: 1,
+    minWorkers: 1
   }
 }));

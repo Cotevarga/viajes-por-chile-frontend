@@ -1,26 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRequest, clearAuth } from '../lib/api.js';
 import { imageUrl } from '../data/catalog.js';
 import PurchaseHistory from '../components/PurchaseHistory.jsx';
-
-const DEFAULT_GOOGLE_CLIENT_ID = '25065180497-5qa2tf845vbhk57gjav0iht24jkre8ft.apps.googleusercontent.com';
-
-function getRoleHome(role) {
-  if (['admin', 'administrador'].includes(role)) return '/admin';
-  if (['seller', 'vendedor'].includes(role)) return '/vendedor';
-  return '/menu';
-}
+import { getRoleHome } from '../components/RoleRoute.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
 export function LoginPage() {
   const [params] = useSearchParams();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isAdminLogin, setIsAdminLogin] = useState(false);
   const navigate = useNavigate();
+  const { updateUser } = useAuth();
   const googleButton = useRef(null);
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || DEFAULT_GOOGLE_CLIENT_ID;
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() || '';
 
   useEffect(() => {
     if (!googleClientId) return undefined;
@@ -34,6 +30,7 @@ export function LoginPage() {
         callback: async ({ credential }) => {
           try {
             const { user } = await apiRequest('auth/google', { method: 'POST', body: JSON.stringify({ credential }) });
+            updateUser(user);
             navigate(getRoleHome(user.role));
           } catch (requestError) {
             setError(requestError.message);
@@ -44,7 +41,7 @@ export function LoginPage() {
     };
     document.body.appendChild(script);
     return () => script.remove();
-  }, [googleClientId, navigate]);
+  }, [googleClientId, navigate, updateUser]);
 
   function toggleLoginMode() {
     setIsAdminLogin((current) => !current);
@@ -59,15 +56,18 @@ export function LoginPage() {
         method: 'POST',
         body: JSON.stringify({ email, password })
       });
+      updateUser(user);
       if (isAdminLogin && !['admin', 'administrador'].includes(user.role)) {
         try {
           await apiRequest('auth/logout', { method: 'POST' });
         } catch (logoutError) {
           clearAuth();
+          updateUser(null);
           setError(`Esta cuenta no tiene acceso al menú de administración. No se pudo revocar la sesión: ${logoutError.message}`);
           return;
         }
         clearAuth();
+        updateUser(null);
         setError('Esta cuenta no tiene acceso al menú de administración.');
         return;
       }
@@ -83,9 +83,11 @@ export function LoginPage() {
       <button type="button" className="admin-login-toggle" onClick={toggleLoginMode}>
         {isAdminLogin ? 'Volver al inicio de sesión' : 'Ingresar como administrador'}
       </button>
-      <span className="eyebrow">{isAdminLogin ? 'ACCESO ADMINISTRADOR' : 'BIENVENIDO DE VUELTA'}</span><h2>{isAdminLogin ? 'Inicia sesión como administrador' : 'Inicia sesión'}</h2><p className="muted">{isAdminLogin ? 'Ingresa tus credenciales de administrador para acceder al menú.' : 'Accede para gestionar tus pasajes.'}</p>{params.get('registro') === 'exitoso' && !isAdminLogin && <div className="form-success" role="status">Cuenta creada. Ya puedes iniciar sesión.</div>}
+      <span className="eyebrow">{isAdminLogin ? 'ACCESO ADMINISTRADOR' : 'BIENVENIDO DE VUELTA'}</span><h2>{isAdminLogin ? 'Inicia sesión como administrador' : 'Inicia sesión'}</h2><p className="muted">{isAdminLogin ? 'Ingresa tus credenciales de administrador para acceder al menú.' : 'Accede para gestionar tus pasajes.'}</p>{location.state?.logoutWarning && <p className="form-error" role="alert">{location.state.logoutWarning}</p>}{params.get('registro') === 'exitoso' && !isAdminLogin && <div className="form-success" role="status">Cuenta creada. Ya puedes iniciar sesión.</div>}
       <form className="stack-form" onSubmit={submit}><label>Correo electrónico<input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label><label>Contraseña<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>{error && <p className="form-error" role="alert">{error}</p>}<button className="button button-dark w-100">{isAdminLogin ? 'Ingresar al menú administrador' : 'Ingresar a mi cuenta'} <i className="bi bi-arrow-right" /></button></form>
-      {googleClientId && <div ref={googleButton} className="google-signin" />}
+      {googleClientId
+        ? <div ref={googleButton} className="google-signin" />
+        : <p className="muted" role="status">El inicio con Google no está configurado. Puedes ingresar con correo y contraseña.</p>}
       <p className="account-switch">¿No tienes una cuenta? <Link to="/registro">Regístrate</Link></p>
       <p className="account-switch"><Link to="/olvide-contrasena">¿Olvidaste tu contraseña?</Link></p>
       <p className="demo-note">Tus datos se validan en la base MariaDB local.</p>
@@ -193,6 +195,7 @@ export function ProfilePage() {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const navigate = useNavigate();
+  const { updateUser } = useAuth();
 
   useEffect(() => {
     apiRequest('auth/me')
@@ -214,7 +217,7 @@ export function ProfilePage() {
         method: 'PUT',
         body: JSON.stringify({ name: form.name, telephone: form.telephone, region: form.region, commune: form.commune })
       });
-      globalThis.localStorage?.setItem('viajes.user', JSON.stringify(user));
+      updateUser(user);
       setSaved(true);
     } catch (requestError) {
       setError(requestError.message);

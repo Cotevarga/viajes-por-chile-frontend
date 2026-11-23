@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { apiRequest, clearAuth } from '../lib/api.js';
+import { apiRequest } from '../lib/api.js';
 import ListaProductos from '../components/ListaProductos.jsx';
+import LogoutButton from '../components/LogoutButton.jsx';
 
 function itemLabel(item) {
   return item.sale_code || item.orderCode || item.name || item.nombre || item.title || item.id || 'Orden';
@@ -11,9 +11,7 @@ export default function SellerPage() {
   const [orders, setOrders] = useState([]);
   const [ordersError, setOrdersError] = useState('');
   const [loadingOrders, setLoadingOrders] = useState(true);
-  const [logoutError, setLogoutError] = useState('');
   const [detail, setDetail] = useState(null);
-  const navigate = useNavigate();
 
   async function toggleOrder(saleCode) {
     if (detail?.sale_code === saleCode) return setDetail(null);
@@ -39,24 +37,12 @@ export default function SellerPage() {
     return () => { active = false; };
   }, []);
 
-  async function logout() {
-    setLogoutError('');
-    try {
-      await apiRequest('auth/logout', { method: 'POST' });
-      clearAuth();
-      navigate('/');
-    } catch (requestError) {
-      setLogoutError(requestError.message);
-    }
-  }
-
   return (
     <main className="role-dashboard container">
       <header className="admin-topline">
         <div><span className="eyebrow">VIAJES POR CHILE / VENDEDOR</span><h1>Panel de vendedor</h1></div>
-        <div><button type="button" className="button" onClick={() => navigate('/perfil')}>Mis datos</button> <button type="button" className="button button-dark" onClick={logout}>Cerrar sesión</button></div>
+        <LogoutButton />
       </header>
-      {logoutError && <p className="form-error" role="alert">{logoutError}</p>}
       <div className="role-dashboard-grid">
         <section className="role-data-card">
           <h2>Productos</h2>

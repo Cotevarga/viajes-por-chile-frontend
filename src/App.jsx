@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import AdminLayout from './components/AdminLayout.jsx';
-import RoleRoute from './components/RoleRoute.jsx';
+import RoleRoute, { GuestRoute } from './components/RoleRoute.jsx';
 import SiteLayout from './components/SiteLayout.jsx';
 import AccountPages from './pages/AccountPages.jsx';
 import AdminMessagesPage from './pages/AdminMessagesPage.jsx';
@@ -17,11 +17,13 @@ export default function App() {
   return (
     <Routes>
       <Route element={<SiteLayout />}>
-        <Route path="/" element={<AccountPages.LoginPage />} />
-        <Route path="/registro" element={<AccountPages.RegisterPage />} />
+        <Route path="/" element={<GuestRoute><AccountPages.LoginPage /></GuestRoute>} />
+        <Route path="/login" element={<GuestRoute><AccountPages.LoginPage /></GuestRoute>} />
+        <Route path="/registro" element={<GuestRoute><AccountPages.RegisterPage /></GuestRoute>} />
+        <Route path="/register" element={<GuestRoute><AccountPages.RegisterPage /></GuestRoute>} />
         <Route path="/olvide-contrasena" element={<AccountPages.ForgotPasswordPage />} />
         <Route path="/restablecer" element={<AccountPages.ResetPasswordPage />} />
-        <Route path="/perfil" element={<RoleRoute allowedRoles={['customer', 'seller', 'admin']}><AccountPages.ProfilePage /></RoleRoute>} />
+        <Route path="/perfil" element={<RoleRoute allowedRoles={['customer', 'admin']}><AccountPages.ProfilePage /></RoleRoute>} />
         <Route path="/menu" element={<ShopPages.MenuPage />} />
         <Route path="/viajes/:slug" element={<ShopPages.TripDetailPage />} />
         <Route path="/blog" element={<InfoPages.BlogPage />} />
