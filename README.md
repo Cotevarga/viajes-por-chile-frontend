@@ -41,7 +41,7 @@ No agregues `.env.local` ni credenciales al repositorio. Para un despliegue, con
 npm run build
 ```
 
-El proxy de `vite.config.js` solo aplica al servidor de desarrollo. El backend debe permitir el origen del frontend en su configuración CORS.
+El proxy de `vite.config.js` solo aplica al servidor de desarrollo. El backend debe permitir el origen del frontend en su configuración CORS. Para alojar el sitio en la raíz de un dominio, la ruta base predeterminada es `/`; para GitHub Pages en un subdirectorio, define `VITE_BASE_PATH=/viajes-por-chile-frontend/` antes del build.
 
 ## Pruebas
 
