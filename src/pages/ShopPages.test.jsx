@@ -1,8 +1,8 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
-import { MenuPage } from './ShopPages.jsx';
+import { MenuPage, TripDetailPage } from './ShopPages.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { useProducts } from '../context/ProductContext.jsx';
 
@@ -105,7 +105,79 @@ describe('MenuPage', () => {
 
     expect(await screen.findByText(/Regreso 2026-12-05/)).toBeInTheDocument();
     expect(screen.getByText(/2 pasajero/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Elegir salida' })).toHaveAttribute('href', '/viajes/valparaiso');
+    expect(screen.getByRole('link', { name: 'Elegir asientos' })).toHaveAttribute('href', '/viajes/valparaiso');
+  });
+
+  it('lleva la ruta encontrada y los pasajeros al mapa de asientos', async () => {
+    useProducts.mockReturnValue({ products: [{
+      slug: 'valdivia',
+      title: 'Santiago - Valdivia',
+      destination: 'Valdivia',
+      distance_km: 848,
+      price: 22000,
+      discount_percent: 10,
+      type: 'Salón Cama',
+      status: 'Activo',
+      image: 'valdivia.jpg',
+      schedules: []
+    }] });
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/menu']}>
+        <Routes>
+          <Route path="/menu" element={<MenuPage />} />
+          <Route path="/viajes/:slug" element={<TripDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await user.selectOptions(screen.getByLabelText('Origen'), 'santiago');
+    await user.selectOptions(screen.getByLabelText('Destino'), 'valdivia');
+    await user.type(screen.getByLabelText('Salida'), '2099-04-20');
+    await user.selectOptions(screen.getByLabelText('Pasajeros'), '2');
+    await user.click(screen.getByRole('button', { name: /Buscar/ }));
+    expect(screen.getByText('$19.800 / pasaje')).toBeInTheDocument();
+    await user.click(screen.getByRole('link', { name: 'Elegir asientos' }));
+
+    expect(screen.getByRole('heading', { name: 'Santiago - Valdivia' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Fecha de viaje')).toHaveValue('2099-04-20');
+    expect(screen.getByRole('button', { name: 'Asiento 1' })).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Nombre completo')).toHaveLength(2);
+  });
+
+  it('explica cuando la ruta buscada no está publicada', async () => {
+    const user = userEvent.setup();
+    render(renderMenuPage());
+
+    await user.selectOptions(screen.getByLabelText('Origen'), 'santiago');
+    await user.selectOptions(screen.getByLabelText('Destino'), 'valdivia');
+    await user.type(screen.getByLabelText('Salida'), '2099-04-20');
+    await user.click(screen.getByRole('button', { name: /Buscar/ }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('No hay una ruta disponible');
+    expect(screen.queryByRole('link', { name: 'Elegir asientos' })).not.toBeInTheDocument();
+  });
+
+  it('no cambia silenciosamente la fecha si la ruta tiene otras salidas publicadas', async () => {
+    useProducts.mockReturnValue({ products: [{
+      slug: 'valdivia',
+      title: 'Santiago - Valdivia',
+      destination: 'Valdivia',
+      price: 22000,
+      type: 'Salón Cama',
+      status: 'Activo',
+      image: 'valdivia.jpg',
+      schedules: [{ id: 'salida', date: '2099-04-21', time: '09:00', platform: '1', capacity: 64 }]
+    }] });
+    const user = userEvent.setup();
+    render(renderMenuPage());
+
+    await user.selectOptions(screen.getByLabelText('Origen'), 'santiago');
+    await user.selectOptions(screen.getByLabelText('Destino'), 'valdivia');
+    await user.type(screen.getByLabelText('Salida'), '2099-04-20');
+    await user.click(screen.getByRole('button', { name: /Buscar/ }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('No hay una salida publicada para la fecha seleccionada');
   });
 
   it('muestra la distancia y clasifica como doble piso toda ruta de al menos 400 km', () => {

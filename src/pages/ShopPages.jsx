@@ -27,7 +27,7 @@ const doubleDeckSeats = {
 const seatGridColumns = [1, 2, 4, 5];
 
 export function MenuPage() {
-  const { products } = useProducts();
+  const { products, loading, error: productsError } = useProducts();
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [date, setDate] = useState('');
@@ -57,6 +57,11 @@ export function MenuPage() {
 
   function submitTrip(event) {
     event.preventDefault();
+    if (loading || productsError) {
+      setQuote(null);
+      setError(loading ? 'Espera a que se carguen las rutas.' : `No se pudieron cargar las rutas: ${productsError}`);
+      return;
+    }
     const trip = calculateTrip(origin, destination);
     if (!trip) {
       setQuote(null);
@@ -64,6 +69,19 @@ export function MenuPage() {
       return;
     }
     const outboundProduct = findProductForRoute(products, origin, destination);
+    if (!outboundProduct || outboundProduct.status !== 'Activo') {
+      setQuote(null);
+      setError('No hay una ruta disponible para el origen y destino seleccionados. Revisa las rutas publicadas abajo.');
+      return;
+    }
+    const today = new Date();
+    const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const futureSchedules = (outboundProduct.schedules || []).filter((schedule) => schedule.date >= todayString);
+    if (tripType === 'one-way' && futureSchedules.length && !futureSchedules.some((schedule) => schedule.date === date)) {
+      setQuote(null);
+      setError('No hay una salida publicada para la fecha seleccionada. Elige otra fecha.');
+      return;
+    }
     let returnProduct;
     let returnTrip;
     if (tripType === 'round-trip') {
@@ -90,7 +108,8 @@ export function MenuPage() {
     setError('');
     setQuote({
       ...trip,
-      totalPrice: trip.price + (returnTrip?.price || 0),
+      totalPrice: Math.round(Number(outboundProduct.price) * (100 - Number(outboundProduct.discount_percent || 0)) / 100)
+        + (returnProduct ? Math.round(Number(returnProduct.price) * (100 - Number(returnProduct.discount_percent || 0)) / 100) : 0),
       outboundProductSlug: outboundProduct?.slug,
       returnProductSlug: returnProduct?.slug,
       returnTrip
@@ -117,7 +136,7 @@ export function MenuPage() {
         </div>
       </form>
       {error && <p className="form-error" role="alert">{error}</p>}
-      {quote && <div className="quote-result"><div><span className="eyebrow">TU RUTA · {date}{quote.returnTrip ? ` · Regreso ${returnDate}` : ''}</span><h3>{quote.from.name} <i className="bi bi-arrow-right" /> {quote.to.name}</h3><p>{quote.distance.toLocaleString('es-CL')} km aprox. · {passengerCount} pasajero(s){quote.returnTrip ? ` · Ida y vuelta: ${quote.returnTrip.distance.toLocaleString('es-CL')} km por regreso` : ''}</p></div><strong>{formatPrice(quote.totalPrice)}{quote.returnTrip ? ' / ida y vuelta' : ' / pasaje'}</strong>{reservableProduct ? <Link className="button button-accent" to={`/viajes/${reservableProduct.slug}`} state={{ departureDate: date, passengerCount, roundTrip: quote.returnTrip ? { leg: 'outbound', returnProductSlug: quote.returnProductSlug, returnDate } : null }}>Elegir salida</Link> : <button className="button button-accent" onClick={() => navigate('/menu#rutas')}>Ver rutas disponibles</button>}</div>}
+      {quote && reservableProduct && <div className="quote-result"><div><span className="eyebrow">TU RUTA · {date}{quote.returnTrip ? ` · Regreso ${returnDate}` : ''}</span><h3>{quote.from.name} <i className="bi bi-arrow-right" /> {quote.to.name}</h3><p>{quote.distance.toLocaleString('es-CL')} km aprox. · {passengerCount} pasajero(s){quote.returnTrip ? ` · Ida y vuelta: ${quote.returnTrip.distance.toLocaleString('es-CL')} km por regreso` : ''}</p></div><strong>{formatPrice(quote.totalPrice)}{quote.returnTrip ? ' / ida y vuelta' : ' / pasaje'}</strong><Link className="button button-accent" to={`/viajes/${reservableProduct.slug}`} state={{ departureDate: date, passengerCount, roundTrip: quote.returnTrip ? { leg: 'outbound', returnProductSlug: quote.returnProductSlug, returnDate } : null }}>Elegir asientos</Link></div>}
     </section>
 
     <section className="destinations container" id="rutas">
@@ -150,12 +169,12 @@ export function TripDetailPage() {
   const [added, setAdded] = useState(false);
   const [seatClass, setSeatClass] = useState('semi');
   const [bookingOpen, setBookingOpen] = useState(() => Boolean(location.state?.departureDate));
-  const [passengers, setPassengers] = useState(() => {
-    const savedPassengers = location.state?.passengers;
-    return Array.isArray(savedPassengers) && savedPassengers.length
-      ? savedPassengers.map(({ name = '', rut = '' }) => ({ name, rut, seatNumber: null }))
-      : [{ name: '', rut: '', seatNumber: null }];
-  });
+  const makePassengers = () => Array.from({ length: location.state?.passengerCount || 1 }, (_, index) => ({
+    name: location.state?.passengers?.[index]?.name || '',
+    rut: location.state?.passengers?.[index]?.rut || '',
+    seatNumber: null
+  }));
+  const [passengers, setPassengers] = useState(makePassengers);
   const [seatMapOpen, setSeatMapOpen] = useState(() => Boolean(location.state?.departureDate));
   const [occupiedSeats, setOccupiedSeats] = useState([]);
   const [availabilityError, setAvailabilityError] = useState('');
@@ -204,12 +223,7 @@ export function TripDetailPage() {
     setScheduleId('');
     setAdded(false);
     setSeatClass('semi');
-    setPassengers(() => {
-      const savedPassengers = location.state?.passengers;
-      return Array.isArray(savedPassengers) && savedPassengers.length
-        ? savedPassengers.map(({ name = '', rut = '' }) => ({ name, rut, seatNumber: null }))
-        : [{ name: '', rut: '', seatNumber: null }];
-    });
+    setPassengers(makePassengers());
     setBookingOpen(Boolean(location.state?.departureDate));
     setSeatMapOpen(Boolean(location.state?.departureDate));
   }, [slug]);
