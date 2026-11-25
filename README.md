@@ -43,6 +43,12 @@ npm run build
 
 El proxy de `vite.config.js` solo aplica al servidor de desarrollo. El backend debe permitir el origen del frontend en su configuración CORS. Para alojar el sitio en la raíz de un dominio, la ruta base predeterminada es `/`; para GitHub Pages en un subdirectorio, define `VITE_BASE_PATH=/viajes-por-chile-frontend/` antes del build.
 
+## Administración y vendedor
+
+Los reportes y el perfil se organizan por pestañas. El reporte completo exporta seis hojas Excel; la bandeja de mensajes permite filtrar por tipo, estado, fechas y texto y exportar el resultado. Los campos históricos no registrados aparecen como «No disponible».
+
+El panel de vendedor permite emitir ventas simuladas, consultar y anular órdenes o boletos y reprogramar boletos a una salida publicada sin cambiar su precio ni clase. No se realiza ningún cobro ni reembolso real. Requiere el backend actualizado y sus migraciones aplicadas.
+
 ## Pruebas
 
 ```powershell

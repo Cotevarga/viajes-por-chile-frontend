@@ -35,15 +35,20 @@ describe('ReportesPage', () => {
   });
 
   it('muestra métricas, compras, cancelaciones, flota y sucesos reales', async () => {
+    const user = userEvent.setup();
     render(<MemoryRouter><ReportesPage /></MemoryRouter>);
 
-    await screen.findByRole('heading', { name: 'Detalle de compras' });
+    await screen.findByLabelText('Estado de Bus 12');
     expect(screen.getByLabelText('Período del reporte')).toHaveValue('day');
     expect(screen.getByText('Monto total de ventas').parentElement).toHaveTextContent('$70.000');
     expect(screen.getByText('Boletos vendidos').parentElement).toHaveTextContent('2');
-    expect(screen.getByText(/Ana · Santiago - Arica/)).toBeInTheDocument();
-    expect(screen.getByText('Cambio de planes')).toBeInTheDocument();
     expect(screen.getByLabelText('Estado de Bus 12')).toHaveValue('con_falla');
+    await user.click(screen.getByRole('tab', { name: 'Ventas' }));
+    expect(screen.getByText(/Ana · Santiago - Arica/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Estado de Bus 12')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Cancelaciones' }));
+    expect(screen.getByText('Cambio de planes')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Historial / Sucesos' }));
     expect(screen.getByText('Reporte de bus Bus 12')).toBeInTheDocument();
   });
 
@@ -51,7 +56,7 @@ describe('ReportesPage', () => {
     const user = userEvent.setup();
     render(<MemoryRouter><ReportesPage /></MemoryRouter>);
 
-    await screen.findByRole('heading', { name: 'Detalle de compras' });
+    await screen.findByLabelText('Estado de Bus 12');
     await user.selectOptions(screen.getByLabelText('Período del reporte'), 'week');
 
     expect(apiRequest).toHaveBeenCalledWith('reports?period=week');
@@ -61,7 +66,7 @@ describe('ReportesPage', () => {
     const user = userEvent.setup();
     render(<MemoryRouter><ReportesPage /></MemoryRouter>);
 
-    await screen.findByRole('heading', { name: 'Detalle de compras' });
+    await screen.findByLabelText('Estado de Bus 12');
     await user.selectOptions(screen.getByLabelText('Período del reporte'), 'month');
     await waitFor(() => expect(screen.getByRole('button', { name: /Exportar Excel/i })).toBeEnabled());
     await user.selectOptions(screen.getByLabelText('Datos a exportar'), 'cancellations');

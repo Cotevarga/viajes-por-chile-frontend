@@ -40,7 +40,6 @@ export default function SiteLayout() {
             {user ? <NavLink className="nav-account" to={user.role === 'admin' ? '/admin' : '/perfil'} onClick={() => setMenuOpen(false)}>{user.role === 'admin' ? 'Panel admin' : 'Mi cuenta'}</NavLink>
               : <NavLink className="nav-account" to="/login" onClick={() => setMenuOpen(false)}>Iniciar sesión</NavLink>}
             {!user && <NavLink to="/register" onClick={() => setMenuOpen(false)}>Crear cuenta</NavLink>}
-            {user && user.role !== 'admin' && <NavLink to="/perfil" onClick={() => setMenuOpen(false)}>Mis datos</NavLink>}
             {user && <LogoutButton className="nav-logout" />}
             <button className="cart-button" onClick={() => setCartOpen(true)} aria-label={`Abrir carrito, ${count} pasajes`}>
               <i className="bi bi-bag" /> <span>Carrito</span><b>{count}</b>

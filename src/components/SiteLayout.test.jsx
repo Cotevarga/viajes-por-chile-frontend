@@ -36,6 +36,14 @@ describe('SiteLayout', () => {
   afterEach(() => {
     cleanup();
     vi.resetAllMocks();
+    localStorage.removeItem('viajes.user');
+  });
+
+  it('muestra un solo enlace de cuenta para clientes', () => {
+    localStorage.setItem('viajes.user', JSON.stringify({ role: 'customer' }));
+    render(renderSiteLayout());
+    expect(screen.getByRole('link', { name: 'Mi cuenta' })).toHaveAttribute('href', '/perfil');
+    expect(screen.queryByRole('link', { name: 'Mis datos' })).not.toBeInTheDocument();
   });
 
   it('muestra todos los artículos del carrito y refleja los cambios al rerenderizar', () => {

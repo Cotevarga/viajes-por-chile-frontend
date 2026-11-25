@@ -173,6 +173,7 @@ describe('ServicePage', () => {
 
     await user.type(screen.getByLabelText('Nombre completo'), 'Ana Pérez');
     await user.type(screen.getByLabelText('Correo electrónico'), 'ana@example.com');
+    await user.type(screen.getByLabelText('Teléfono (opcional)'), '912345678');
     await user.type(screen.getByLabelText('Mensaje'), 'Necesito información de una ruta.');
     await user.click(screen.getByRole('button', { name: /Enviar mensaje/ }));
 
@@ -182,6 +183,7 @@ describe('ServicePage', () => {
       body: JSON.stringify({
         name: 'Ana Pérez',
         email: 'ana@example.com',
+        telephone: '912345678',
         message: 'Necesito información de una ruta.',
         isComplaint: false
       })
@@ -204,6 +206,7 @@ describe('ServicePage', () => {
       body: JSON.stringify({
         name: 'Ana Pérez',
         email: 'ana@example.com',
+        telephone: '',
         message: 'El bus llegó atrasado.',
         isComplaint: true
       })

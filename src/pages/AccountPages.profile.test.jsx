@@ -73,6 +73,7 @@ describe('Cambiar contraseña dentro del perfil', () => {
     const user = userEvent.setup();
     render(<MemoryRouter><ProfilePage /></MemoryRouter>);
     await screen.findByLabelText('Nombre completo');
+    await user.click(screen.getByRole('tab', { name: 'Cambiar contraseña' }));
     await user.type(screen.getByLabelText('Contraseña actual'), 'Cote1234');
     await user.type(screen.getByLabelText('Nueva contraseña'), 'Nueva12345');
     await user.type(screen.getByLabelText('Confirmar nueva contraseña'), 'Nueva12345');

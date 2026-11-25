@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { apiRequest, clearAuth } from '../lib/api.js';
 import { imageUrl } from '../data/catalog.js';
 import PurchaseHistory from '../components/PurchaseHistory.jsx';
+import Tabs from '../components/Tabs.jsx';
 import { getRoleHome } from '../components/RoleRoute.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -192,6 +193,7 @@ function ChangePasswordForm() {
 
 export function ProfilePage() {
   const [form, setForm] = useState(null);
+  const [tab, setTab] = useState('datos');
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const navigate = useNavigate();
@@ -226,7 +228,12 @@ export function ProfilePage() {
 
   if (!form) return <section className="container narrow-page page-section"><p className="muted">Cargando tus datos…</p></section>;
   return <section className="container narrow-page page-section"><span className="eyebrow">TU CUENTA</span><h1>Mis datos</h1>
-    <form className="stack-form form-panel" onSubmit={submit}>
+    <Tabs label="Secciones de mi cuenta" active={tab} onChange={setTab} tabs={[
+      { id: 'datos', label: 'Mis datos' },
+      { id: 'seguridad', label: 'Cambiar contraseña' },
+      { id: 'historial', label: 'Historial de compras y boletos' }
+    ]}>
+    {tab === 'datos' && <form className="stack-form form-panel" onSubmit={submit}>
       <label>Correo electrónico<input value={form.email} disabled readOnly /></label>
       <label>Nombre completo<input name="name" value={form.name} onChange={update} required /></label>
       <label>Teléfono<input name="telephone" type="tel" value={form.telephone} onChange={update} /></label>
@@ -234,9 +241,10 @@ export function ProfilePage() {
       {error && <p className="form-error" role="alert">{error}</p>}
       {saved && <div className="form-success" role="status">Datos actualizados.</div>}
       <button className="button button-dark">Guardar cambios</button>
-    </form>
-    <ChangePasswordForm />
-    <PurchaseHistory />
+    </form>}
+    {tab === 'seguridad' && <ChangePasswordForm />}
+    {tab === 'historial' && <PurchaseHistory />}
+    </Tabs>
   </section>;
 }
 
@@ -293,7 +301,7 @@ export function ServicePage() {
     try {
       await apiRequest('contact-messages', {
         method: 'POST',
-        body: JSON.stringify({ name: formData.get('nombre'), email: formData.get('correo'), message: formData.get('mensaje'), isComplaint: formData.get('reclamo') === 'on' })
+        body: JSON.stringify({ name: formData.get('nombre'), email: formData.get('correo'), telephone: formData.get('telefono'), message: formData.get('mensaje'), isComplaint: formData.get('reclamo') === 'on' })
       });
       setSent(true);
       formElement.reset();
@@ -301,7 +309,7 @@ export function ServicePage() {
       setError(requestError.message);
     }
   }
-  return <section className="container contact-page page-section"><div><span className="eyebrow">ESTAMOS PARA AYUDAR</span><h1>Hablemos de tu viaje.</h1><p className="muted">Cuéntanos cómo podemos ayudarte. Nuestro equipo revisará tu consulta.</p><div className="contact-detail"><i className="bi bi-envelope" /><span>Atención en línea<br /><strong>Respuesta dentro de 1 día hábil</strong></span></div></div><form className="stack-form form-panel" onSubmit={submit}><label>Nombre completo<input name="nombre" autoComplete="name" required /></label><label>Correo electrónico<input type="email" name="correo" autoComplete="email" required /></label><label>Mensaje<textarea name="mensaje" rows="5" required /></label><label style={{ display: 'flex', alignItems: 'center', gap: 10 }}><input type="checkbox" name="reclamo" style={{ width: 'auto', minHeight: 'auto' }} />Este mensaje es un reclamo</label>{error && <p className="form-error" role="alert">{error}</p>}{sent && <div className="form-success" role="status">Mensaje guardado en la base de datos.</div>}<button className="button button-dark">Enviar mensaje <i className="bi bi-arrow-right" /></button></form></section>;
+  return <section className="container contact-page page-section"><div><span className="eyebrow">ESTAMOS PARA AYUDAR</span><h1>Hablemos de tu viaje.</h1><p className="muted">Cuéntanos cómo podemos ayudarte. Nuestro equipo revisará tu consulta.</p><div className="contact-detail"><i className="bi bi-envelope" /><span>Atención en línea<br /><strong>Respuesta dentro de 1 día hábil</strong></span></div></div><form className="stack-form form-panel" onSubmit={submit}><label>Nombre completo<input name="nombre" autoComplete="name" required /></label><label>Correo electrónico<input type="email" name="correo" autoComplete="email" required /></label><label>Teléfono (opcional)<input type="tel" name="telefono" autoComplete="tel" maxLength="40" /></label><label>Mensaje<textarea name="mensaje" rows="5" required /></label><label style={{ display: 'flex', alignItems: 'center', gap: 10 }}><input type="checkbox" name="reclamo" style={{ width: 'auto', minHeight: 'auto' }} />Este mensaje es un reclamo</label>{error && <p className="form-error" role="alert">{error}</p>}{sent && <div className="form-success" role="status">Mensaje guardado en la base de datos.</div>}<button className="button button-dark">Enviar mensaje <i className="bi bi-arrow-right" /></button></form></section>;
 }
 
 const AccountPages = { LoginPage, RegisterPage, ServicePage, ForgotPasswordPage, ResetPasswordPage, ProfilePage };

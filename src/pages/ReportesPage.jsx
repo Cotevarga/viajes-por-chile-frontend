@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { formatPrice } from '../data/catalog.js';
 import { apiRequest } from '../lib/api.js';
+import Tabs from '../components/Tabs.jsx';
 
 export const FLEET_STATUSES = {
   con_falla: 'Con falla',
@@ -19,11 +20,10 @@ const periods = [
 
 const exportFilters = [
   ['all', 'Todo el reporte'],
-  ['sales', 'Ventas y compras'],
-  ['purchases', 'Compras'],
-  ['tickets', 'Boletos'],
+  ['sales', 'Ventas y pasajes'],
   ['cancellations', 'Cancelaciones'],
   ['fleet', 'Flota'],
+  ['messages', 'Mensajes y reclamos'],
   ['activity', 'Registro de sucesos']
 ];
 
@@ -39,6 +39,7 @@ export default function ReportesPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [newEvent, setNewEvent] = useState({ vehicle: '', description: '', status: 'con_falla' });
+  const [tab, setTab] = useState('fleet');
 
   useEffect(() => {
     let active = true;
@@ -159,7 +160,14 @@ export default function ReportesPage() {
           ))}
         </section>
 
-        <section className="admin-table-wrap fleet-events">
+        <Tabs label="Categorías de reportes" active={tab} onChange={setTab} tabs={[
+          { id: 'fleet', label: 'Mantención y Flota' },
+          { id: 'sales', label: 'Ventas' },
+          { id: 'cancellations', label: 'Cancelaciones' },
+          { id: 'messages', label: 'Mensajes y Reclamos' },
+          { id: 'activity', label: 'Historial / Sucesos' }
+        ]}>
+        {tab === 'fleet' && <section className="admin-table-wrap fleet-events">
           <div className="section-heading">
             <div><span className="eyebrow">MANTENCIÓN</span><h2>Estado de la flota</h2></div>
             <span className="fleet-event-count">{report.fleetEvents.length} eventos</span>
@@ -186,9 +194,9 @@ export default function ReportesPage() {
               <td><button type="button" onClick={() => deleteFleet(event.id)}>Eliminar</button></td>
             </tr>)}</tbody>
           </table></div> : <p className="muted">No hay eventos de flota para este período.</p>}
-        </section>
+        </section>}
 
-        <section className="admin-table-wrap">
+        {tab === 'sales' && <section className="admin-table-wrap">
           <div className="section-heading"><div><span className="eyebrow">VENTAS</span><h2>Detalle de compras</h2></div></div>
           {report.purchases.length ? <div className="table-responsive"><table className="table admin-table">
             <thead><tr><th>Fecha</th><th>Compra</th><th>Boletos</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead>
@@ -204,9 +212,9 @@ export default function ReportesPage() {
               <td>{sale.status !== 'anulada' && sale.tickets.filter((t) => t.status !== 'cancelado').length > 1 && <button type="button" className="btn btn-outline-danger btn-sm py-0 px-2" style={{ fontSize: '0.75rem' }} onClick={() => cancel({ sale_code: sale.sale_code }, 'toda la compra')}>Cancelar todos</button>}</td>
             </tr>)}</tbody>
           </table></div> : <p className="muted">No hay compras en este período.</p>}
-        </section>
+        </section>}
 
-        <section className="admin-table-wrap">
+        {tab === 'cancellations' && <section className="admin-table-wrap">
           <div className="section-heading"><div><span className="eyebrow">CANCELACIONES</span><h2>Detalle de cancelaciones</h2></div></div>
           {report.cancellations.length ? <div className="table-responsive"><table className="table admin-table">
             <thead><tr><th>Fecha</th><th>Pasajero</th><th>Viaje</th><th>Monto</th><th>Motivo</th></tr></thead>
@@ -215,9 +223,20 @@ export default function ReportesPage() {
               <td>{formatPrice(item.price_paid)}</td><td>{item.cancel_reason || '—'}</td>
             </tr>)}</tbody>
           </table></div> : <p className="muted">No hay cancelaciones en este período.</p>}
-        </section>
+        </section>}
 
-        <section className="admin-table-wrap">
+        {tab === 'messages' && <section className="admin-table-wrap">
+          <div className="section-heading"><div><span className="eyebrow">CONTACTO</span><h2>Mensajes y reclamos</h2></div></div>
+          {(report.messages || []).length ? <div className="table-responsive"><table className="table admin-table messages-table">
+            <thead><tr><th>Fecha</th><th>Tipo</th><th>Nombre</th><th>Correo</th><th>Mensaje</th><th>Estado</th><th>Notas</th></tr></thead>
+            <tbody>{report.messages.map((item) => <tr key={item.id}>
+              <td>{formatDate(item.created_at)}</td><td>{item.type === 'reclamo' ? 'Reclamo' : 'Mensaje'}</td>
+              <td>{item.name}</td><td>{item.email}</td><td>{item.message}</td><td>{item.status}</td><td>{item.admin_notes || '—'}</td>
+            </tr>)}</tbody>
+          </table></div> : <p className="muted">No hay mensajes en este período.</p>}
+        </section>}
+
+        {tab === 'activity' && <section className="admin-table-wrap">
           <div className="section-heading"><div><span className="eyebrow">HISTORIAL</span><h2>Registro de sucesos</h2></div></div>
           {report.activity.length ? <div className="table-responsive"><table className="table admin-table">
             <thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Responsable</th></tr></thead>
@@ -225,7 +244,8 @@ export default function ReportesPage() {
               <td>{formatDate(item.created_at)}</td><td>{item.type}</td><td>{item.description}</td><td>{item.actor}</td>
             </tr>)}</tbody>
           </table></div> : <p className="muted">No hay sucesos registrados en este período.</p>}
-        </section>
+        </section>}
+        </Tabs>
       </>}
     </div>
   );

@@ -59,7 +59,8 @@ const report = {
     type: 'flota',
     description: 'Reporte de bus',
     actor: 'Admin'
-  }]
+  }],
+  messages: [{ created_at: '2026-11-18 12:00:00', type: 'reclamo', name: 'Ana', email: 'ana@example.test', message: 'Mensaje completo', status: 'no_leido', admin_notes: 'Seguimiento' }]
 };
 
 function readWorkbook(workbook) {
@@ -71,14 +72,15 @@ describe('reportExcel', () => {
     const exported = readWorkbook(createReportWorkbook(report));
 
     expect(exported.SheetNames).toEqual([
-      'Resumen', 'Ventas', 'Compras', 'Boletos', 'Cancelaciones', 'Flota', 'Sucesos'
+      'Resumen KPIs', 'Ventas y Pasajes', 'Cancelaciones', 'Flota y Mantención', 'Mensajes y Reclamos', 'Historial de Sucesos'
     ]);
-    expect(XLSX.utils.sheet_to_json(exported.Sheets.Ventas, { header: 1 })[1]).toEqual([
-      'sale-1', '2026-11-18 10:00:00', 'parcial', 35000
-    ]);
-    expect(XLSX.utils.sheet_to_json(exported.Sheets.Boletos, { header: 1 })[1][9]).toBe('activo');
+    const sales = XLSX.utils.sheet_to_json(exported.Sheets['Ventas y Pasajes'], { header: 1 });
+    expect(sales[1][0]).toBe('sale-1');
+    expect(sales[1][2]).toBe('No disponible');
+    expect(sales[1][14]).toBe(35000);
     expect(XLSX.utils.sheet_to_json(exported.Sheets.Cancelaciones, { header: 1 })[1][8]).toBe('Cambio de planes');
-    expect(XLSX.utils.sheet_to_json(exported.Sheets.Resumen, { header: 1 })[1]).toEqual(['Período', 'Este Mes']);
+    expect(XLSX.utils.sheet_to_json(exported.Sheets['Mensajes y Reclamos'], { header: 1 })[1][5]).toBe('Mensaje completo');
+    expect(XLSX.utils.sheet_to_json(exported.Sheets['Resumen KPIs'], { header: 1 })[1]).toEqual(['Período', 'Este Mes']);
   });
 
   it('exports only the selected category and reports invalid filters', () => {

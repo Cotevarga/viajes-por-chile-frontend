@@ -14,6 +14,9 @@ export default function AdminMessagesPage() {
   const [messages, setMessages] = useState([]);
   const [filter, setFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [from, setFrom] = useState('');
+  const [until, setUntil] = useState('');
+  const [query, setQuery] = useState('');
   const [access, setAccess] = useState('checking');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -80,14 +83,31 @@ export default function AdminMessagesPage() {
   }
   if (access === 'denied') return <Navigate to="/" replace />;
 
-  const unread = messages.filter((item) => item.status === 'no_leido').length;
+  const invalidRange = from && until && from > until;
+  const search = query.trim().toLocaleLowerCase('es-CL');
+  const filtered = messages.filter((item) => {
+    const date = item.created_at?.slice(0, 10) || '';
+    return (!from || date >= from) && (!until || date <= until)
+      && (!search || [item.name, item.email, item.message].some((text) => text?.toLocaleLowerCase('es-CL').includes(search)));
+  });
+  const unread = filtered.filter((item) => item.status === 'no_leido').length;
+
+  async function exportMessages() {
+    try {
+      const { exportMessagesToExcel } = await import('./reportExcel.js');
+      exportMessagesToExcel(filtered);
+      setError('');
+    } catch (exportError) {
+      setError(`No se pudieron exportar los mensajes: ${exportError.message}`);
+    }
+  }
 
   return <div className="admin-content">
     <header className="admin-topline">
       <div><span className="eyebrow">GESTIÓN / MENSAJES</span><h1>Mensajes de contacto</h1></div>
     </header>
     <section className="admin-table-wrap">
-      <div className="section-heading">
+      <div className="section-heading message-controls">
         <div><span className="eyebrow">{unread} SIN LEER</span><h2>Bandeja de entrada</h2></div>
         <label>Tipo
           <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} aria-label="Filtrar por tipo">
@@ -102,11 +122,18 @@ export default function AdminMessagesPage() {
             {Object.entries(MESSAGE_STATUSES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
         </label>
+        <label>Desde<input type="date" value={from} onChange={(event) => setFrom(event.target.value)} /></label>
+        <label>Hasta<input type="date" value={until} onChange={(event) => setUntil(event.target.value)} /></label>
+        <label>Buscar<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nombre, correo o texto" /></label>
+        <button type="button" className="button button-dark" onClick={exportMessages} disabled={loading || Boolean(invalidRange)}>
+          Exportar Excel
+        </button>
       </div>
+      {invalidRange && <p className="form-error" role="alert">La fecha inicial debe ser anterior o igual a la fecha final.</p>}
       {error && <p className="form-error" role="alert">{error}</p>}
-      {loading ? <p className="muted">Cargando mensajes…</p> : messages.length ? <div className="table-responsive"><table className="table admin-table">
+      {loading ? <p className="muted">Cargando mensajes…</p> : filtered.length && !invalidRange ? <div className="table-responsive"><table className="table admin-table messages-table">
         <thead><tr><th>Fecha</th><th>Tipo</th><th>Nombre</th><th>Correo</th><th>Mensaje</th><th>Estado</th><th>Notas</th><th>Acciones</th></tr></thead>
-        <tbody>{messages.map((item) => <tr key={item.id} style={item.status === 'no_leido' ? { fontWeight: 600 } : undefined}>
+        <tbody>{filtered.map((item) => <tr key={item.id} style={item.status === 'no_leido' ? { fontWeight: 600 } : undefined}>
           <td>{new Date(item.created_at.replace(' ', 'T')).toLocaleString('es-CL')}</td>
           <td><span className={`table-status ${item.type === 'reclamo' ? 'is-off' : ''}`}>{item.type === 'reclamo' ? 'Reclamo' : 'Mensaje'}</span></td>
           <td>{item.name}</td>
